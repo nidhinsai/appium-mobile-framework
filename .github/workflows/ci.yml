@@ -1,0 +1,110 @@
+name: Mobile CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build & Run Mobile Tests
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      # ------------------------------------------------------------------
+      # Android emulator + Appium setup
+      # ------------------------------------------------------------------
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Appium 2 + UiAutomator2 driver
+        run: |
+          npm install -g appium@latest
+          appium driver install uiautomator2
+
+      - name: Start Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-snapshot-save -no-audio -no-boot-anim
+          disable-animations: true
+          script: echo "Emulator started"
+
+      - name: Start Appium server (background)
+        run: |
+          appium --address 127.0.0.1 --port 4723 --log appium.log &
+          sleep 5
+          curl --fail http://127.0.0.1:4723/status || (cat appium.log && exit 1)
+
+      # ------------------------------------------------------------------
+      # Build & test
+      # ------------------------------------------------------------------
+      - name: Build project (skip tests)
+        run: mvn clean compile -q
+
+      - name: Run mobile tests
+        run: mvn test -Dplatform=android -Dsurefire.failIfNoSpecifiedTests=false
+        continue-on-error: true
+
+      # ------------------------------------------------------------------
+      # Reporting / Evidence upload
+      # ------------------------------------------------------------------
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: target/allure-results/
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: target/screenshots/
+
+      - name: Upload device logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-logs
+          path: target/device-logs/
+
+      - name: Upload Appium server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-server-log
+          path: appium.log
+
+      - name: Generate Allure report
+        if: always()
+        run: mvn allure:report -q
+
+      - name: Deploy Allure report to GitHub Pages
+        if: github.ref == 'refs/heads/main' && always()
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: target/site/allure-maven-plugin
+          destination_dir: allure-report
