@@ -1,0 +1,17 @@
+# AI Code Review — powered by GitHub Models (gpt-4o) via GITHUB_TOKEN.
+# No API keys or secrets required.
+name: AI PR Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  ai-review:
+    uses: nidhinsai/ai-code-reviewer/.github/workflows/pr-review.yml@main
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      repository: ${{ github.repository }}
+    permissions:
+      pull-requests: write
+      contents: read
