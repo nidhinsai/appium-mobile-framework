@@ -7,6 +7,7 @@ import com.nidhinsai.mobile.utils.ScreenshotUtil;
 import java.net.MalformedURLException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.testng.Assert;
 import org.testng.ITestResult;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -17,11 +18,23 @@ public abstract class BaseMobileTest {
 
     protected final Logger log = LogManager.getLogger(getClass());
 
-    @BeforeMethod
-    public void setUp() throws MalformedURLException {
+    @BeforeMethod(alwaysRun = true)
+    public void setUp() {
         log.info("[Setup] Initialising AppiumDriver for {}", getClass().getSimpleName());
-        DriverManager.initDriver();
-        log.info("[Setup] AppiumDriver ready on thread {}", Thread.currentThread().getName());
+        try {
+            DriverManager.initDriver();
+            log.info("[Setup] AppiumDriver ready on thread {}", Thread.currentThread().getName());
+        } catch (MalformedURLException e) {
+            // Fail the test explicitly with a clean message instead of letting TestNG
+            // bubble up a configuration error that masks the real problem.
+            String msg = "Failed to initialise Appium driver — invalid server URL: " + e.getMessage();
+            log.error("[Setup] {}", msg, e);
+            Assert.fail(msg);
+        } catch (Exception e) {
+            String msg = "Failed to initialise Appium driver: " + e.getMessage();
+            log.error("[Setup] {}", msg, e);
+            Assert.fail(msg);
+        }
     }
 
     /**
