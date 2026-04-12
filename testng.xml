@@ -3,6 +3,8 @@
 <suite name="Mobile Test Suite" verbose="2">
 
     <listeners>
+        <!-- RetryTransformer: IAnnotationTransformer — must be listed first -->
+        <listener class-name="com.nidhinsai.mobile.utils.RetryTransformer"/>
         <listener class-name="com.nidhinsai.mobile.listeners.MobileTestListener"/>
     </listeners>
 
