@@ -1,4 +1,21 @@
+# Build output
 target/
+*.class
+*.jar
+
+# IDE
 .idea/
 *.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# macOS
 .DS_Store
+
+# Test artifacts
+logs/
+test-output/
+allure-results/
+allure-report/
