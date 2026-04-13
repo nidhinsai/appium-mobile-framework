@@ -1,17 +1,36 @@
-# AI Code Review — powered by GitHub Models (gpt-4o) via GITHUB_TOKEN.
-# No API keys or secrets required.
-name: AI PR Code Review
+# AI PR Analysis — powered by GitHub Models (gpt-4o) via GITHUB_TOKEN.
+# Drop this file into .github/workflows/ of any repository to enable:
+#   1. Commit-by-commit PR summary (ported from Summarize-Pull-Request)
+#   2. Per-file code review with inline diff comments
+#   3. Magic re-trigger: comment "ai summarize" on a PR to re-run analysis
+#
+# Prerequisites: GitHub Copilot subscription. No secrets needed.
+name: AI PR Analysis
 
 on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+  issue_comment:
+    types: [created]
+
 jobs:
-  ai-review:
+  ai-analysis:
+    # Skip non-PR issue comments and bot-authored comments
+    if: >
+      github.event_name == 'pull_request' ||
+      (
+        github.event.issue.pull_request != null &&
+        !github.event.comment.performed_via_github_app &&
+        contains(github.event.comment.body, 'ai summarize')
+      )
     uses: nidhinsai/ai-code-reviewer/.github/workflows/pr-review.yml@main
     with:
-      pr_number: ${{ github.event.pull_request.number }}
-      repository: ${{ github.repository }}
+      pr_number:    ${{ github.event.pull_request.number || 0 }}
+      repository:   ${{ github.repository }}
+      event_name:   ${{ github.event_name }}
+      comment_body: ${{ github.event.comment.body || '' }}
+      issue_number: ${{ github.event.issue.number || 0 }}
     permissions:
       pull-requests: write
       contents: read
